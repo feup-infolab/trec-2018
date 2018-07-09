@@ -51,10 +51,17 @@ get_document_length <- function(filepath) {
 
     count <- count + length(lines)
     loginfo("%d documents processed", count)
+    break
   }
 
   close(con)
   res
 }
 
+loginfo("Getting document length and first-three-paragraphs length")
 doc_length <- get_document_length("~/Downloads/WashingtonPost.v2/data/TREC_Washington_Post_collection.v2.jl")
+
+dir.create("output/", showWarnings = F)
+doc_length_path <- "output/wapo-doc_length.csv.gz"
+loginfo("Saving result to %s", doc_length_path)
+write.csv(doc_length, gzfile(doc_length_path), row.names = F)
