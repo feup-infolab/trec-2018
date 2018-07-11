@@ -4,12 +4,15 @@ pacman::p_load(
   "ggplot2",
   "rjson",
   "logging",
-  "plyr"
+  "plyr",
+  "reshape2"
 )
 
 basicConfig()
 
 BATCH_SIZE <- 10000
+BIN_WIDTH <- 4000
+BINS <- 10
 
 get_document_length <- function(filepath) {
   res <- data.frame(doc_id=character(0), doc_len=integer(0), par_len=integer(0))
@@ -68,12 +71,15 @@ doc_length_path <- "output/wapo-doc_length.csv.gz"
 
 loginfo("Getting document length from file")
 doc_length <- read.csv(file=gzfile(doc_length_path), header=TRUE, sep=",")
+doc_length <- doc_length[order(doc_length$doc_len), ]
+doc_length$doc_len_without_par <- doc_length$doc_len - doc_length$par_len
+doc_length$doc_len <- NULL
+#doc_length$group <- doc_length$doc_len %/% BIN_WIDTH + 1
+groups <- rep(1:(BINS-1), each=nrow(doc_length) %/% (BINS-1))
+groups <- c(groups, rep(BINS, nrow(doc_length) - length(groups)))
+doc_length$group <- groups
+doc_length$n <- 1:nrow(doc_length)
+doc_length <- melt(doc_length, id.vars=c("doc_id", "group", "n"))
 
-barname <- c(1, 1, 2, 2)
-type <- c('doc_len', 'par_len', 'doc_len', 'par_len')
-value <- c(300, 700, 200,1800)
-
-demo <- data.frame(barname, type, value)
-
-ggplot(data=demo, aes(x=barname, y=value, fill=type)) +
-  geom_bar(stat="identity")
+ggplot(doc_length, aes(x=n, y = (..count..)/tapply(..count.., ..PANEL.., sum)[..PANEL..], fill=variable)) +
+  geom_histogram(bins=BINS)
