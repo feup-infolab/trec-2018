@@ -72,14 +72,12 @@ doc_length_path <- "output/wapo-doc_length.csv.gz"
 loginfo("Getting document length from file")
 doc_length <- read.csv(file=gzfile(doc_length_path), header=TRUE, sep=",")
 doc_length <- doc_length[order(doc_length$doc_len), ]
-doc_length$doc_len_without_par <- doc_length$doc_len - doc_length$par_len
-doc_length$doc_len <- NULL
-#doc_length$group <- doc_length$doc_len %/% BIN_WIDTH + 1
-groups <- rep(1:(BINS-1), each=nrow(doc_length) %/% (BINS-1))
-groups <- c(groups, rep(BINS, nrow(doc_length) - length(groups)))
-doc_length$group <- groups
 doc_length$n <- 1:nrow(doc_length)
-doc_length <- melt(doc_length, id.vars=c("doc_id", "group", "n"))
+doc_length <- melt(doc_length, id.vars=c("doc_id", "n"))
 
-ggplot(doc_length, aes(x=n, y = (..count..)/tapply(..count.., ..PANEL.., sum)[..PANEL..], fill=variable)) +
-  geom_histogram(bins=BINS)
+ggplot(doc_length, aes(x=n, y=value, color=variable)) +
+  geom_smooth() +
+  scale_color_discrete("Part", labels=c("Full content", "First three paragraphs")) +
+  xlab("Documents") +
+  ylab("Length") +
+  theme(legend.position="top")
