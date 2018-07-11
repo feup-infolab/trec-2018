@@ -61,23 +61,39 @@ get_document_length <- function(filepath) {
   res
 }
 
-#loginfo("Getting document length and first-three-paragraphs length")
-#doc_length <- get_document_length("~/Downloads/WashingtonPost.v2/data/TREC_Washington_Post_collection.v2.jl")
-#doc_length <- doc_length[order(doc_length$doc_len),]
-#dir.create("output/", showWarnings = F)
-doc_length_path <- "output/wapo-doc_length.csv.gz"
-#loginfo("Saving result to %s", doc_length_path)
-#write.csv(doc_length, gzfile(doc_length_path), row.names = F)
+generate_csv <- function(doc_length, doc_length_path) {
+  #dir.create("output/", showWarnings = F)
+  #doc_length_path <- c("output/", filename)
+  write.csv(doc_length, gzfile(doc_length_path), row.names = F)
+}
+
+read_csv <- function(doc_length_path) {
+  res <- read.csv(file=gzfile(doc_length_path), header=TRUE, sep=",")
+  res
+}
+
+plot_data <- function(doc_length) {
+  doc_length <- doc_length[order(doc_length$doc_len), ]
+  doc_length$n <- 1:nrow(doc_length)
+  doc_length <- melt(doc_length, id.vars=c("doc_id", "n"))
+  
+  ggplot(doc_length, aes(x=n, y=value, color=variable)) +
+    geom_smooth() +
+    scale_color_discrete("Part", labels=c("Full content", "First three paragraphs")) +
+    xlab("Documents") +
+    ylab("Length") +
+    theme(legend.position="top")
+}
+
+
+loginfo("Getting document length and first-three-paragraphs length")
+doc_length <- get_document_length("~/Downloads/WashingtonPost.v2/data/TREC_Washington_Post_collection.v2.jl")
+
+loginfo("Saving result")
+generate_csv(doc_length = doc_length, doc_length_path = "output/wapo-doc_length.csv.gz")
 
 loginfo("Getting document length from file")
-doc_length <- read.csv(file=gzfile(doc_length_path), header=TRUE, sep=",")
-doc_length <- doc_length[order(doc_length$doc_len), ]
-doc_length$n <- 1:nrow(doc_length)
-doc_length <- melt(doc_length, id.vars=c("doc_id", "n"))
+doc_length <- read_csv(doc_length_path = "output/wapo-doc_length.csv.gz")
 
-ggplot(doc_length, aes(x=n, y=value, color=variable)) +
-  geom_smooth() +
-  scale_color_discrete("Part", labels=c("Full content", "First three paragraphs")) +
-  xlab("Documents") +
-  ylab("Length") +
-  theme(legend.position="top")
+loginfo("Draw graph from data")
+plot_data(doc_length = doc_length)
