@@ -54,7 +54,7 @@ get_document_length <- function(filepath) {
 
     count <- count + length(lines)
     loginfo("%d documents processed", count)
-    break
+    #break
   }
 
   close(con)
@@ -86,14 +86,14 @@ plot_data <- function(doc_length) {
 }
 
 
-loginfo("Getting document length and first-three-paragraphs length")
-doc_length <- get_document_length("~/Downloads/WashingtonPost.v2/data/TREC_Washington_Post_collection.v2.jl")
+#loginfo("Getting document length and first-three-paragraphs length")
+#doc_length <- get_document_length("~/Downloads/WashingtonPost.v2/data/TREC_Washington_Post_collection.v2.jl")
 
-loginfo("Saving result")
-generate_csv(doc_length = doc_length, doc_length_path = "output/wapo-doc_length.csv.gz")
+#loginfo("Saving result")
+#generate_csv(doc_length = doc_length, doc_length_path = "output/wapo-doc_length-all.csv.gz")
 
 loginfo("Getting document length from file")
-doc_length <- read_csv(doc_length_path = "output/wapo-doc_length.csv.gz")
+doc_length <- read_csv(doc_length_path = "output/wapo-doc_length-all.csv.gz")
 
-loginfo("Draw graph from data")
-plot_data(doc_length = doc_length)
+#loginfo("Draw graph from data")
+#plot_data(doc_length = doc_length)
