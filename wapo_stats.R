@@ -5,7 +5,8 @@ pacman::p_load(
   "rjson",
   "logging",
   "plyr",
-  "reshape2"
+  "reshape2",
+  "stringr"
 )
 
 basicConfig()
@@ -85,6 +86,36 @@ plot_data <- function(doc_length) {
     theme(legend.position="top")
 }
 
+read_features_file <- function(features_file_path) {
+  res <- read.csv(file=features_file_path, header=TRUE, sep="\t")
+  res
+}
+
+plot_sentiment <- function(features) {
+  ggplot(features, aes(x=features$SentimentAnalysis, fill=features$SentimentAnalysis)) +
+    geom_bar() +
+    xlab("Documents") +
+    ylab("Length") +
+    theme(legend.position="top")
+}
+
+plot_readability <- function(features) {
+  ggplot(features, aes(x=sub("~¨-\\*.*$", "", features$ReadingComplexity), fill=sub("~¨-\\*.*$", "", features$ReadingComplexity))) +
+    geom_bar() +
+    scale_color_discrete("Part") +
+    xlab("Documents") +
+    ylab("Length") +
+    theme(legend.position="top")
+}
+
+plot_named_entities <- function(features) {
+  entities <- as.data.frame(table(unlist(str_split(features$NamedEntities, "\\|")), dnn = list("entity")), responseName = "freq")
+  entities <- entities[order(entities$freq, decreasing = TRUE), ]
+  ggplot(entities, aes(x=freq, y=entity)) 
+  + geom_bar(stat="identity") 
+  + coord_flip()
+}
+plot_named_entities(features)
 
 #loginfo("Getting document length and first-three-paragraphs length")
 #doc_length <- get_document_length("~/Downloads/WashingtonPost.v2/data/TREC_Washington_Post_collection.v2.jl")
@@ -92,8 +123,18 @@ plot_data <- function(doc_length) {
 #loginfo("Saving result")
 #generate_csv(doc_length = doc_length, doc_length_path = "output/wapo-doc_length-all.csv.gz")
 
-loginfo("Getting document length from file")
-doc_length <- read_csv(doc_length_path = "output/wapo-doc_length-all.csv.gz")
+#loginfo("Getting document length from file")
+#doc_length <- read_csv(doc_length_path = "~/gitprojects/wapo-analytics/output/wapo-doc_length-all.csv.gz")
 
 #loginfo("Draw graph from data")
 #plot_data(doc_length = doc_length)
+
+#loginfo("Getting features from file")
+#features <- read_features_file("~/Descargas/feat-small.tsv")
+
+#loginfo("Draw graph sentiment")
+#plot_sentiment(features)
+
+#plot_readability(features)
+
+plot_named_entities(features)
