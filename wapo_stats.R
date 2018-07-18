@@ -98,18 +98,22 @@ plot_sentiment <- function(features) {
     scale_fill_discrete("Sentiment") +
     xlab("Sentiment") +
     ylab("Documents") +
-    theme(legend.position="top")
+    theme(legend.position="none")
 }
 
 plot_readability <- function(features) {
   features <- features[!(is.na(features$ReadingComplexity) | features$ReadingComplexity=="null"), ]
-  ggplot(features, aes(x=sub("~¨-\\*.*$", "", features$ReadingComplexity), fill=sub("~¨-\\*.*$", "", features$ReadingComplexity))) +
+  features$ReadingComplexity <- sub("~¨-\\*.*$", "", features$ReadingComplexity)
+  positions <- factor(features$ReadingComplexity, levels <- c("5th_grade", "6th_grade", "7th_grade",  "8th_9th_grade", "10th_12th_grade", "College", "College_graduate"))
+  ggplot(features, aes(x=positions, fill=positions)) +
+    #ggplot(features, aes(x=sub("~¨-\\*.*$", "", features$ReadingComplexity), fill=sub("~¨-\\*.*$", "", features$ReadingComplexity))) +
     geom_bar() +
-    scale_fill_discrete("Levels") +
+    scale_fill_brewer("Levels") +
     xlab("Levels") +
     ylab("Documents") +
-    theme(legend.position="top")
+    theme(legend.position="none")
 }
+#plot_readability(features)
 
 plot_named_entities <- function(features) {
   features <- features[!(is.na(features$NamedEntities) | features$NamedEntities=="null"), ]
@@ -117,13 +121,40 @@ plot_named_entities <- function(features) {
   entities <- head(entities[order(entities$freq, decreasing = TRUE), ], 20)
   ggplot(entities, aes(x=reorder(entity, freq), y=freq, fill = freq)) + 
   geom_bar(stat="identity") +
-  scale_fill_gradient(low = "blue", high = "red") + 
+  scale_fill_gradient(low = "blue", high = "blue") + 
   xlab("Entities") +
   ylab("Documents") +
-  theme(legend.position="top") +
+  theme(legend.position="none") +
   coord_flip() 
 }
 #plot_named_entities(features)
+
+plot_emotions_ocurrences <- function(features) {
+  features <- features[!(is.na(features$EmotionCategories) | features$EmotionCategories=="null"), ]
+  #features$EmotionCategoriesName <- sub("~¨-\\*.*$", "", features$EmotionCategories)
+  features$EmotionCategoriesValue <- gsub("\\]", "", gsub("\\[", "", gsub("^.*~¨-\\*", "", features$EmotionCategories)))
+  features$EmotionCategoriesList <- gsub(", ", "|", gsub(";[^\\,]*", "", features$EmotionCategoriesValue))
+  emotlist <- as.data.frame(table(unlist(str_split(features$EmotionCategoriesList, "\\|")), dnn = list("emot")), responseName = "freq")
+  ggplot(emotlist, aes(x=reorder(emot, freq), y=freq, fill = freq)) + 
+    geom_bar(stat="identity") +
+    scale_fill_gradient(low = "blue", high = "blue") + 
+    xlab("Emotions") +
+    ylab("Documents") +
+    theme(legend.position="none") +
+    coord_flip() 
+}
+#plot_emotions_ocurrences(features)
+
+
+plot_emotions_weight <- function(features) {
+  features <- features[!(is.na(features$EmotionCategories) | features$EmotionCategories=="null"), ]
+  #features$EmotionCategoriesName <- sub("~¨-\\*.*$", "", features$EmotionCategories)
+  features$EmotionCategoriesValue <- gsub("\\]", "", gsub("\\[", "", gsub("^.*~¨-\\*", "", features$EmotionCategories)))
+  features$EmotionCategoriesList <- gsub(", ", "|", features$EmotionCategoriesValue)
+  emotlist <- as.data.frame(table(unlist(str_split(features$EmotionCategoriesList, "\\|")), dnn = list("emot")), responseName = "freq")
+  emotlist
+}
+#plot_emotions_weight(features)
 
 #loginfo("Getting document length and first-three-paragraphs length")
 #doc_length <- get_document_length("~/Downloads/WashingtonPost.v2/data/TREC_Washington_Post_collection.v2.jl")
