@@ -87,35 +87,43 @@ plot_data <- function(doc_length) {
 }
 
 read_features_file <- function(features_file_path) {
-  res <- read.csv(file=features_file_path, header=TRUE, sep="\t")
+  res <- read.csv(file=gzfile(features_file_path), header=TRUE, sep="\t")
   res
 }
 
 plot_sentiment <- function(features) {
+  features <- features[!(is.na(features$SentimentAnalysis) | features$SentimentAnalysis=="null"), ]
   ggplot(features, aes(x=features$SentimentAnalysis, fill=features$SentimentAnalysis)) +
     geom_bar() +
-    xlab("Documents") +
-    ylab("Length") +
+    scale_fill_discrete("Sentiment") +
+    xlab("Sentiment") +
+    ylab("Documents") +
     theme(legend.position="top")
 }
 
 plot_readability <- function(features) {
+  features <- features[!(is.na(features$ReadingComplexity) | features$ReadingComplexity=="null"), ]
   ggplot(features, aes(x=sub("~¨-\\*.*$", "", features$ReadingComplexity), fill=sub("~¨-\\*.*$", "", features$ReadingComplexity))) +
     geom_bar() +
-    scale_color_discrete("Part") +
-    xlab("Documents") +
-    ylab("Length") +
+    scale_fill_discrete("Levels") +
+    xlab("Levels") +
+    ylab("Documents") +
     theme(legend.position="top")
 }
 
 plot_named_entities <- function(features) {
+  features <- features[!(is.na(features$NamedEntities) | features$NamedEntities=="null"), ]
   entities <- as.data.frame(table(unlist(str_split(features$NamedEntities, "\\|")), dnn = list("entity")), responseName = "freq")
-  entities <- entities[order(entities$freq, decreasing = TRUE), ]
-  ggplot(entities, aes(x=freq, y=entity)) 
-  + geom_bar(stat="identity") 
-  + coord_flip()
+  entities <- head(entities[order(entities$freq, decreasing = TRUE), ], 20)
+  ggplot(entities, aes(x=reorder(entity, freq), y=freq, fill = freq)) + 
+  geom_bar(stat="identity") +
+  scale_fill_gradient(low = "blue", high = "red") + 
+  xlab("Entities") +
+  ylab("Documents") +
+  theme(legend.position="top") +
+  coord_flip() 
 }
-plot_named_entities(features)
+#plot_named_entities(features)
 
 #loginfo("Getting document length and first-three-paragraphs length")
 #doc_length <- get_document_length("~/Downloads/WashingtonPost.v2/data/TREC_Washington_Post_collection.v2.jl")
@@ -131,10 +139,11 @@ plot_named_entities(features)
 
 #loginfo("Getting features from file")
 #features <- read_features_file("~/Descargas/feat-small.tsv")
+#features <- read_features_file("~/Downloads/features-basic6-trec-notext-p1.tsv.gz")
 
 #loginfo("Draw graph sentiment")
 #plot_sentiment(features)
 
 #plot_readability(features)
 
-plot_named_entities(features)
+#plot_named_entities(features)
