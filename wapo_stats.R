@@ -111,7 +111,7 @@ plot_readability <- function(features) {
     scale_fill_brewer("Levels") +
     xlab("Levels") +
     ylab("Documents") +
-    theme(legend.position="none")
+    theme(legend.position="none",axis.text.x = element_text(angle = 45, hjust = 1))#axis.text=element_text(size=4))
 }
 #plot_readability(features)
 
