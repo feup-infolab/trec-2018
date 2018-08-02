@@ -6,7 +6,9 @@ pacman::p_load(
   "logging",
   "plyr",
   "reshape2",
-  "stringr"
+  "stringr",
+  "lubridate",
+  "proxy"
 )
 
 basicConfig()
@@ -145,16 +147,134 @@ plot_emotions_ocurrences <- function(features) {
 }
 #plot_emotions_ocurrences(features)
 
-
-plot_emotions_weight <- function(features) {
+generate_emotions_weight <- function(features) {
   features <- features[!(is.na(features$EmotionCategories) | features$EmotionCategories=="null"), ]
   #features$EmotionCategoriesName <- sub("~¨-\\*.*$", "", features$EmotionCategories)
   features$EmotionCategoriesValue <- gsub("\\]", "", gsub("\\[", "", gsub("^.*~¨-\\*", "", features$EmotionCategories)))
   features$EmotionCategoriesList <- gsub(", ", "|", features$EmotionCategoriesValue)
   emotlist <- as.data.frame(table(unlist(str_split(features$EmotionCategoriesList, "\\|")), dnn = list("emot")), responseName = "freq")
+  emotlist$Label <- gsub(";.*$", "", emotlist$emot)
+  emotlist$Weight <- as.numeric(gsub("^.*;", "", emotlist$emot))
+  emotlist$emot <- NULL
+  emotlist$freq <- NULL
   emotlist
 }
+
+generate_emotions_weight_aggr <- function(features) {
+  emotlist <- generate_emotions_weight(features)
+  aggr <- aggregate(emotlist$Weight, by=list(Category=emotlist$Label), FUN=sum)
+  colnames(aggr) <- c("Emotions", "Weight")
+  aggr <- aggr[order(aggr$Weight, decreasing = TRUE), ]
+  aggr
+}
+
+plot_emotions_weight <- function(features) {
+  aggr <- generate_emotions_weight(features)
+  ggplot(aggr, aes(x=reorder(Emotions, Weight), y=Weight, fill = Weight)) + 
+    geom_bar(stat="identity") +
+    scale_fill_gradient(low = "blue", high = "blue") + 
+    xlab("Emotions") +
+    ylab("Weight") +
+    theme(legend.position="none") +
+    coord_flip() 
+}
 #plot_emotions_weight(features)
+
+plot_emotion_distribution_weight <- function(features, emot) {
+  aggr <- generate_emotions_weight(features)
+  aggr <- aggr[aggr$Label == emot, ]
+  ggplot(aggr, aes(x=aggr$Weight)) + geom_histogram(bins=5)
+}
+#plot_emotion_distribution_weight(features, "self-pride")
+
+getSeason <- function(DATES) {
+  WS <- as.Date("2012-12-15", format = "%Y-%m-%d") # Winter Solstice
+  SE <- as.Date("2012-3-15",  format = "%Y-%m-%d") # Spring Equinox
+  SS <- as.Date("2012-6-15",  format = "%Y-%m-%d") # Summer Solstice
+  FE <- as.Date("2012-9-15",  format = "%Y-%m-%d") # Fall Equinox
+  
+  # Convert dates from any year to 2012 dates
+  d <- as.Date(strftime(DATES, format="2012-%m-%d"))
+  
+  ifelse (d >= WS | d < SE, "Winter",
+          ifelse (d >= SE & d < SS, "Spring",
+                  ifelse (d >= SS & d < FE, "Summer", "Fall")))
+}
+
+temp <- function() {
+  #time <- read.csv(file="~/Downloads/features-nent_time-notext.tsv", header=TRUE, sep="\t")
+  #extra <- read.csv(file="~/Downloads/trec-extra-date.tsv", header=TRUE, sep="\t")
+  #total <- merge(time,extra,by="id")
+  #write.table(total,file="~/Downloads/feat-date-nent_time.tsv",sep="\t",quote = F,row.names = F)
+  total <- read.csv(file="~/Downloads/feat-date-nent_time.tsv", header=TRUE, sep="\t")
+  total$date <- as.Date(as.POSIXct(total$published_date/1000, origin="1970-01-01"))
+  total$year <- year(as.POSIXct(total$published_date/1000, origin="1970-01-01"))
+  total$month <- month(as.POSIXct(total$published_date/1000, origin="1970-01-01"))
+  total$day <- day(as.POSIXct(total$published_date/1000, origin="1970-01-01"))
+  total$month_abb <- month.abb[month(as.POSIXct(1325376562000/1000, origin="1970-01-01"))]
+  total$weekday <- weekdays(as.Date(as.POSIXct(total$published_date/1000, origin="1970-01-01")))
+  total$season <- getSeason(as.Date(as.POSIXct(total$published_date/1000, origin="1970-01-01")))
+  total$week <- lubridate::isoweek(ymd(as.Date(as.POSIXct(total$published_date/1000, origin="1970-01-01"))))
+  write.table(total,file="~/Downloads/trec-dates-all.tsv",sep="\t",quote = F,row.names = F)
+  total
+}
+#total <- temp()
+#head(total)
+
+LAMBDA <- 0.85
+
+# Show concrete columns (by name) of dataframe
+#features_df[, c("id","SentimentAnalysis")] 
+
+# Delete column of dataframe
+#r1[, -1]
+
+# Vector similarity
+#simil(matrix(c(1,2,3,  1,2,3), nrow=2, byrow=T), method="cosine")
+
+features_df <- read.csv(file="~/Downloads/features5-matrix.tsv", header=TRUE, sep="\t")
+#+temp try less features
+features_df <- features_df[, c("id","SentimentAnalysis", "ReadingComplexity")]
+r1 <- read.csv(file="~/Downloads/feup-run1.res", header=FALSE, sep=" ")
+maxS <- function(di, dJ, features_df) {
+  df <- data.frame(matrix(ncol = 2, nrow = 0))
+  colnames(df) <- c("id", "sim")
+  for (dj in dJ) {
+    sim <- simil(matrix(c(features_df[which(features_df$id == di), -1],  features_df[which(features_df$id == dj), -1]), nrow=2, byrow=T), method="cosine")
+    df[nrow(df)+1,] <- c(dj, sim)
+  }
+  as.numeric(max(df$sim))
+}
+rerank <- function(features_df, r1) {
+  r1$norm_score <- r1$V5/max(r1$V5)
+  r1split <- split(r1, r1$V1)
+  
+  s_rerank <- NULL
+  for (topic in as.character(unique(r1$V1))) {
+    s <- NULL
+    rs <- r1split[[topic]]
+  
+    s <- rbind(s, head(rs,1))
+    rs <- rs[-1,]
+  
+    while(nrow(rs) > 0) {
+      df <- data.frame(matrix(ncol = 2, nrow = 0))
+      colnames(df) <- c("id", "mmr")
+      for (rs_doc in rs$V3) {
+        mmr =  LAMBDA * (rs[which(rs$V3 == rs_doc),]$norm_score - (1-LAMBDA)*maxS(rs_doc, s$V3, features_df))
+        df[nrow(df)+1,] <- c(rs_doc, mmr)
+      }
+      s <- rbind(s, rs[which(rs$V3 == df[which.max(df$mmr),]$id),])
+      rs <- rs[-which(rs$V3 ==  df[which.max(df$mmr),]$id),]
+    }
+    s_rerank <- rbind(s_rerank, s)
+  }
+  s_rerank
+}
+r3_rerank <- rerank(features_df, r1)
+write.table(r3_rerank,file="~/Downloads/r3_rerank.tsv",sep=" ",quote = F,row.names = F)
+
+#write.csv(total, "~/Downloads/feat-date-nent_time.tsv", row.names = F, sep="\t")
 
 #loginfo("Getting document length and first-three-paragraphs length")
 #doc_length <- get_document_length("~/Downloads/WashingtonPost.v2/data/TREC_Washington_Post_collection.v2.jl")
