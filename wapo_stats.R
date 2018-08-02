@@ -253,26 +253,34 @@ rerank <- function(features_df, r1) {
   for (topic in as.character(unique(r1$V1))) {
     s <- NULL
     rs <- r1split[[topic]]
+    rs <- cbind(mmr = 1.0, rs)
   
     s <- rbind(s, head(rs,1))
     rs <- rs[-1,]
   
     while(nrow(rs) > 0) {
-      df <- data.frame(matrix(ncol = 2, nrow = 0))
-      colnames(df) <- c("id", "mmr")
-      for (rs_doc in rs$V3) {
-        mmr =  LAMBDA * (rs[which(rs$V3 == rs_doc),]$norm_score - (1-LAMBDA)*maxS(rs_doc, s$V3, features_df))
-        df[nrow(df)+1,] <- c(rs_doc, mmr)
+      #df <- data.frame(matrix(ncol = 2, nrow = 0))
+      #colnames(df) <- c("id", "mmr")
+      for(i in 1:nrow(rs)){
+        mmr <- LAMBDA * (rs[i,]$norm_score - (1-LAMBDA)*maxS(rs[i,]$V3, s$V3, features_df))
+        #df[nrow(df)+1,] <- c(rs_doc, mmr)
+        rs[i,]$mmr <- mmr
       }
-      s <- rbind(s, rs[which(rs$V3 == df[which.max(df$mmr),]$id),])
-      rs <- rs[-which(rs$V3 ==  df[which.max(df$mmr),]$id),]
+      #df[which.max(df$mmr),]$id
+      s <- rbind(s, rs[which.max(rs$mmr),])
+      rs <- rs[-which.max(rs$mmr),]
     }
+    s$rank <- seq.int(nrow(s))
+    s$score <- seq(1,0,length.out=nrow(s))
+    
     s_rerank <- rbind(s_rerank, s)
   }
+  s_rerank$V6 <- "feup-run3"
+  s_rerank <- s_rerank[, c("V1", "V2", "V3", "V4", "V5", "rank", "score", "mmr", "V6", "norm_score")]
   s_rerank
 }
-r3_rerank <- rerank(features_df, r1)
-write.table(r3_rerank,file="~/Downloads/r3_rerank.tsv",sep=" ",quote = F,row.names = F)
+s_rerank <- rerank(features_df, r1)
+write.table(s_rerank,file="~/Downloads/r3_rerank.tsv",sep=" ",quote = F,row.names = F)
 
 #write.csv(total, "~/Downloads/feat-date-nent_time.tsv", row.names = F, sep="\t")
 
