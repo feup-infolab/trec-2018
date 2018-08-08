@@ -232,10 +232,6 @@ LAMBDA <- 0.85
 # Vector similarity
 #simil(matrix(c(1,2,3,  1,2,3), nrow=2, byrow=T), method="cosine")
 
-features_df <- read.csv(file="~/Downloads/features5-matrix.tsv", header=TRUE, sep="\t")
-#+temp try less features
-features_df <- features_df[, c("id","SentimentAnalysis", "ReadingComplexity")]
-r1 <- read.csv(file="~/Downloads/feup-run1.res", header=FALSE, sep=" ")
 maxS <- function(di, dJ, features_df) {
   df <- data.frame(matrix(ncol = 2, nrow = 0))
   colnames(df) <- c("id", "sim")
@@ -259,6 +255,8 @@ rerank <- function(features_df, r1) {
     rs <- rs[-1,]
   
     while(nrow(rs) > 0) {
+      print(topic)
+      print(nrow(rs))
       #df <- data.frame(matrix(ncol = 2, nrow = 0))
       #colnames(df) <- c("id", "mmr")
       for(i in 1:nrow(rs)){
@@ -275,12 +273,40 @@ rerank <- function(features_df, r1) {
     
     s_rerank <- rbind(s_rerank, s)
   }
-  s_rerank$V6 <- "feup-run3"
+  s_rerank$V6 <- "feup-run321"
   s_rerank <- s_rerank[, c("V1", "V2", "V3", "V4", "V5", "rank", "score", "mmr", "V6", "norm_score")]
   s_rerank
 }
-s_rerank <- rerank(features_df, r1)
-write.table(s_rerank,file="~/Downloads/r3_rerank.tsv",sep=" ",quote = F,row.names = F)
+reduce_rank_file <- function(input_rank_file, output_rank_file, entries_per_topic) {
+  r1 <- read.csv(file=input_rank_file, header=FALSE, sep=" ")
+  r1split <- split(r1, r1$V1)
+  
+  s_rerank <- NULL
+  for (topic in as.character(unique(r1$V1))) {
+    s <- NULL
+    s <- r1split[[topic]]
+    s <- head(s, entries_per_topic)
+
+    s_rerank <- rbind(s_rerank, s)
+  }
+  write.table(s_rerank,file=output_rank_file,sep=" ",quote = F,col.names = F, row.names = F)
+}
+
+# Rerank process
+rerank_process <- function(filerun, filematrix, fileout) {
+  r1 <- read.csv(file=filerun, header=FALSE, sep=" ")
+  features_df <- read.csv(file=filematrix, header=TRUE, sep="\t")
+  #+temp try less features
+  features_df <- features_df[, c("id","SentimentAnalysis", "ReadingComplexity")]
+  s_rerank <- rerank(features_df, r1)
+  #-temp Only run cols
+  #s_rerank <- s_rerank[, c("V1", "V2", "V3", "rank", "score", "V6")]
+  write.table(s_rerank,file=fileout,sep=" ",quote = F, col.names = F, row.names = F)
+}
+#rerank_process("~/Downloads/feup-run1.res", "~/Downloads/run1-matrix-bin-discret.tsv", "~/Downloads/out.res")
+
+
+#reduce_rank_file("~/Downloads/feup-run2.res", "~/Downloads/reduced.res", 100)
 
 #write.csv(total, "~/Downloads/feat-date-nent_time.tsv", row.names = F, sep="\t")
 
