@@ -221,6 +221,7 @@ temp <- function() {
 #total <- temp()
 #head(total)
 
+#LAMBDA <- 0.5
 LAMBDA <- 0.85
 
 # Show concrete columns (by name) of dataframe
@@ -297,7 +298,8 @@ rerank_process <- function(filerun, filematrix, fileout) {
   r1 <- read.csv(file=filerun, header=FALSE, sep=" ")
   features_df <- read.csv(file=filematrix, header=TRUE, sep="\t")
   #+temp try less features
-  features_df <- features_df[, c("id","SentimentAnalysis", "ReadingComplexity")]
+  #features_df <- features_df[, c("id", "SentimentAnalysis", "ReadingComplexity")]
+  features_df <- features_df[, grep("^id$|^SentimentAnalysis|^ReadingComplexity|^EmotionCategories", colnames(features_df), value=T)] #^Keywords|^NamedEntities|
   s_rerank <- rerank(features_df, r1)
   #-temp Only run cols
   #s_rerank <- s_rerank[, c("V1", "V2", "V3", "rank", "score", "V6")]
