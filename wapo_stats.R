@@ -63,17 +63,23 @@ get_document_length <- function(filepath) {
   close(con)
   res
 }
+#loginfo("Getting document length and first-three-paragraphs length")
+#doc_length <- get_document_length("~/Downloads/WashingtonPost.v2/data/TREC_Washington_Post_collection.v2.jl")
 
 generate_csv <- function(doc_length, doc_length_path) {
   #dir.create("output/", showWarnings = F)
   #doc_length_path <- c("output/", filename)
   write.csv(doc_length, gzfile(doc_length_path), row.names = F)
 }
+#loginfo("Saving result")
+#generate_csv(doc_length = doc_length, doc_length_path = "output/wapo-doc_length-all.csv.gz")
 
 read_csv <- function(doc_length_path) {
   res <- read.csv(file=gzfile(doc_length_path), header=TRUE, sep=",")
   res
 }
+#loginfo("Getting document length from file")
+#doc_length <- read_csv(doc_length_path = "~/gitprojects/wapo-analytics/output/wapo-doc_length-all.csv.gz")
 
 plot_data <- function(doc_length) {
   doc_length <- doc_length[order(doc_length$doc_len), ]
@@ -87,13 +93,19 @@ plot_data <- function(doc_length) {
     ylab("Length") +
     theme(legend.position="top")
 }
+#loginfo("Draw graph from data")
+#plot_data(doc_length = doc_length)
 
 read_features_file <- function(features_file_path) {
   res <- read.csv(file=gzfile(features_file_path), header=TRUE, sep="\t")
   res
 }
+#loginfo("Getting features from file")
+#features <- read_features_file("~/Descargas/feat-small.tsv")
+#features <- read_features_file("~/Downloads/features-basic6-trec-notext-p1.tsv.gz")
 
-plot_sentiment <- function(features) {
+plot_sentiment <- function(filefeatures) {
+  features <- read_features_file(filefeatures)
   features <- features[!(is.na(features$SentimentAnalysis) | features$SentimentAnalysis=="null"), ]
   ggplot(features, aes(x=features$SentimentAnalysis, fill=features$SentimentAnalysis)) +
     geom_bar() +
@@ -102,8 +114,11 @@ plot_sentiment <- function(features) {
     ylab("Documents") +
     theme(legend.position="none")
 }
+#loginfo("Draw graph sentiment")
+#plot_sentiment("~/Downloads/features-basic6-trec-notext-p1.tsv.gz")
 
-plot_readability <- function(features) {
+plot_readability <- function(filefeatures) {
+  features <- read_features_file(filefeatures)
   features <- features[!(is.na(features$ReadingComplexity) | features$ReadingComplexity=="null"), ]
   features$ReadingComplexity <- sub("~¨-\\*.*$", "", features$ReadingComplexity)
   positions <- factor(features$ReadingComplexity, levels <- c("5th_grade", "6th_grade", "7th_grade",  "8th_9th_grade", "10th_12th_grade", "College", "College_graduate"))
@@ -115,9 +130,10 @@ plot_readability <- function(features) {
     ylab("Documents") +
     theme(legend.position="none",axis.text.x = element_text(angle = 45, hjust = 1))#axis.text=element_text(size=4))
 }
-#plot_readability(features)
+#plot_readability("~/Downloads/features-basic6-trec-notext-p1.tsv.gz")
 
-plot_named_entities <- function(features) {
+plot_named_entities <- function(filefeatures) {
+  features <- read_features_file(filefeatures)
   features <- features[!(is.na(features$NamedEntities) | features$NamedEntities=="null"), ]
   entities <- as.data.frame(table(unlist(str_split(features$NamedEntities, "\\|")), dnn = list("entity")), responseName = "freq")
   entities <- head(entities[order(entities$freq, decreasing = TRUE), ], 20)
@@ -129,9 +145,10 @@ plot_named_entities <- function(features) {
   theme(legend.position="none") +
   coord_flip() 
 }
-#plot_named_entities(features)
+#plot_named_entities("~/Downloads/features-basic6-trec-notext-p1.tsv.gz")
 
-plot_emotions_ocurrences <- function(features) {
+plot_emotions_ocurrences <- function(filefeatures) {
+  features <- read_features_file(filefeatures)
   features <- features[!(is.na(features$EmotionCategories) | features$EmotionCategories=="null"), ]
   #features$EmotionCategoriesName <- sub("~¨-\\*.*$", "", features$EmotionCategories)
   features$EmotionCategoriesValue <- gsub("\\]", "", gsub("\\[", "", gsub("^.*~¨-\\*", "", features$EmotionCategories)))
@@ -145,9 +162,10 @@ plot_emotions_ocurrences <- function(features) {
     theme(legend.position="none") +
     coord_flip() 
 }
-#plot_emotions_ocurrences(features)
+#plot_emotions_ocurrences("~/Downloads/features-basic6-trec-notext-p1.tsv.gz")
 
-generate_emotions_weight <- function(features) {
+generate_emotions_weight <- function(filefeatures) {
+  features <- read_features_file(filefeatures)
   features <- features[!(is.na(features$EmotionCategories) | features$EmotionCategories=="null"), ]
   #features$EmotionCategoriesName <- sub("~¨-\\*.*$", "", features$EmotionCategories)
   features$EmotionCategoriesValue <- gsub("\\]", "", gsub("\\[", "", gsub("^.*~¨-\\*", "", features$EmotionCategories)))
@@ -160,16 +178,16 @@ generate_emotions_weight <- function(features) {
   emotlist
 }
 
-generate_emotions_weight_aggr <- function(features) {
-  emotlist <- generate_emotions_weight(features)
+generate_emotions_weight_aggr <- function(filefeatures) {
+  emotlist <- generate_emotions_weight(filefeatures)
   aggr <- aggregate(emotlist$Weight, by=list(Category=emotlist$Label), FUN=sum)
   colnames(aggr) <- c("Emotions", "Weight")
   aggr <- aggr[order(aggr$Weight, decreasing = TRUE), ]
   aggr
 }
 
-plot_emotions_weight <- function(features) {
-  aggr <- generate_emotions_weight(features)
+plot_emotions_weight <- function(filefeatures) {
+  aggr <- generate_emotions_weight(filefeatures)
   ggplot(aggr, aes(x=reorder(Emotions, Weight), y=Weight, fill = Weight)) + 
     geom_bar(stat="identity") +
     scale_fill_gradient(low = "blue", high = "blue") + 
@@ -178,14 +196,15 @@ plot_emotions_weight <- function(features) {
     theme(legend.position="none") +
     coord_flip() 
 }
-#plot_emotions_weight(features)
+#plot_emotions_weight("~/Downloads/features-basic6-trec-notext-p1.tsv.gz")
 
-plot_emotion_distribution_weight <- function(features, emot) {
+plot_emotion_distribution_weight <- function(filefeatures, emot) {
+  features <- read_features_file(filefeatures)
   aggr <- generate_emotions_weight(features)
   aggr <- aggr[aggr$Label == emot, ]
   ggplot(aggr, aes(x=aggr$Weight)) + geom_histogram(bins=5)
 }
-#plot_emotion_distribution_weight(features, "self-pride")
+#plot_emotion_distribution_weight("~/Downloads/features-basic6-trec-notext-p1.tsv.gz", "self-pride")
 
 getSeason <- function(DATES) {
   WS <- as.Date("2012-12-15", format = "%Y-%m-%d") # Winter Solstice
@@ -220,7 +239,9 @@ temp <- function() {
 }
 #total <- temp()
 #head(total)
+#write.csv(total, "~/Downloads/feat-date-nent_time.tsv", row.names = F, sep="\t")
 
+# ========== Rerank methods ==========
 #LAMBDA <- 0.5
 LAMBDA <- 0.85
 
@@ -307,30 +328,39 @@ rerank_process <- function(filerun, filematrix, fileout) {
 }
 #rerank_process("~/Downloads/feup-run1.res", "~/Downloads/run1-matrix-bin-discret.tsv", "~/Downloads/out.res")
 
-
 #reduce_rank_file("~/Downloads/feup-run2.res", "~/Downloads/reduced.res", 100)
+# ========== Rerank methods ==========
 
-#write.csv(total, "~/Downloads/feat-date-nent_time.tsv", row.names = F, sep="\t")
+plot_authors_distrib <- function(filetrecextra) {
+  features <- read_features_file(filetrecextra)
+  features <- features[!(is.na(features$author) | features$author=="null" | features$author==""), ]
+  features$author <- gsub( ", ", "|", as.character(features$author) )
+  features$author <- gsub( " and ", "|", as.character(features$author) )
+  features$author <- gsub( "; ", "|", as.character(features$author) )
+  features$author <- gsub( "— ", "", as.character(features$author) )
+  authors <- as.data.frame(table(unlist(str_split(features$author, "\\|")), dnn = list("author")), responseName = "freq")
+  authors <- head(authors[order(authors$freq, decreasing = TRUE), ], 20)
+  ggplot(authors, aes(x=reorder(author, freq), y=freq, fill = freq)) + 
+    geom_bar(stat="identity") + 
+    scale_fill_gradient(low = "blue", high = "blue") + 
+    xlab("Authors") +
+    ylab("Documents") +
+    theme(legend.position="none") +
+    coord_flip() 
+}
+#plot_authors_distrib('~/Downloads/trec-extra-a.tsv')
 
-#loginfo("Getting document length and first-three-paragraphs length")
-#doc_length <- get_document_length("~/Downloads/WashingtonPost.v2/data/TREC_Washington_Post_collection.v2.jl")
-
-#loginfo("Saving result")
-#generate_csv(doc_length = doc_length, doc_length_path = "output/wapo-doc_length-all.csv.gz")
-
-#loginfo("Getting document length from file")
-#doc_length <- read_csv(doc_length_path = "~/gitprojects/wapo-analytics/output/wapo-doc_length-all.csv.gz")
-
-#loginfo("Draw graph from data")
-#plot_data(doc_length = doc_length)
-
-#loginfo("Getting features from file")
-#features <- read_features_file("~/Descargas/feat-small.tsv")
-#features <- read_features_file("~/Downloads/features-basic6-trec-notext-p1.tsv.gz")
-
-#loginfo("Draw graph sentiment")
-#plot_sentiment(features)
-
-#plot_readability(features)
-
-#plot_named_entities(features)
+plot_topics_distrib <- function(filetrecextra) {
+  features <- read.csv(file=filetrecextra, header=TRUE, sep="\t")
+  features <- features[!(is.na(features$article_url) | features$article_url=="null" | features$article_url==""), ]
+  topics <- as.data.frame(table(unlist(str_split(features$article_url, "\\|")), dnn = list("topic")), responseName = "freq")
+  topics <- head(topics[order(topics$freq, decreasing = TRUE), ], 20)
+  ggplot(topics, aes(x=reorder(topic, freq), y=freq, fill = freq)) + 
+    geom_bar(stat="identity") + 
+    scale_fill_gradient(low = "blue", high = "blue") + 
+    xlab("Topics") +
+    ylab("Documents") +
+    theme(legend.position="none") +
+    coord_flip() 
+}
+#plot_topics_distrib('~/Downloads/trec-extra-a.tsv')
