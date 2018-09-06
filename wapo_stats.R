@@ -8,7 +8,9 @@ pacman::p_load(
   "reshape2",
   "stringr",
   "lubridate",
-  "proxy"
+  "proxy",
+  "Rmisc",
+  "gridExtra"
 )
 
 basicConfig()
@@ -102,7 +104,7 @@ read_features_file <- function(features_file_path) {
 }
 #loginfo("Getting features from file")
 #features <- read_features_file("~/Descargas/feat-small.tsv")
-#features <- read_features_file("~/Downloads/features-basic6-trec-notext-p1.tsv.gz")
+#features <- read_features_file("~/Downloads/features-basic6-trec-notext-p11.tsv")
 
 plot_sentiment <- function(filefeatures) {
   features <- read_features_file(filefeatures)
@@ -115,7 +117,7 @@ plot_sentiment <- function(filefeatures) {
     theme(legend.position="none")
 }
 #loginfo("Draw graph sentiment")
-#plot_sentiment("~/Downloads/features-basic6-trec-notext-p1.tsv.gz")
+#plot_sentiment("~/Downloads/features-basic6-trec-notext-p11.tsv")
 
 plot_readability <- function(filefeatures) {
   features <- read_features_file(filefeatures)
@@ -130,7 +132,7 @@ plot_readability <- function(filefeatures) {
     ylab("Documents") +
     theme(legend.position="none",axis.text.x = element_text(angle = 45, hjust = 1))#axis.text=element_text(size=4))
 }
-#plot_readability("~/Downloads/features-basic6-trec-notext-p1.tsv.gz")
+#plot_readability("~/Downloads/features-basic6-trec-notext-p11.tsv")
 
 plot_named_entities <- function(filefeatures) {
   features <- read_features_file(filefeatures)
@@ -145,7 +147,7 @@ plot_named_entities <- function(filefeatures) {
   theme(legend.position="none") +
   coord_flip() 
 }
-#plot_named_entities("~/Downloads/features-basic6-trec-notext-p1.tsv.gz")
+#plot_named_entities("~/Downloads/features-basic6-trec-notext-p11.tsv")
 
 plot_emotions_ocurrences <- function(filefeatures) {
   features <- read_features_file(filefeatures)
@@ -162,7 +164,7 @@ plot_emotions_ocurrences <- function(filefeatures) {
     theme(legend.position="none") +
     coord_flip() 
 }
-#plot_emotions_ocurrences("~/Downloads/features-basic6-trec-notext-p1.tsv.gz")
+#plot_emotions_ocurrences("~/Downloads/features-basic6-trec-notext-p11.tsv")
 
 generate_emotions_weight <- function(filefeatures) {
   features <- read_features_file(filefeatures)
@@ -183,11 +185,14 @@ generate_emotions_weight_aggr <- function(filefeatures) {
   aggr <- aggregate(emotlist$Weight, by=list(Category=emotlist$Label), FUN=sum)
   colnames(aggr) <- c("Emotions", "Weight")
   aggr <- aggr[order(aggr$Weight, decreasing = TRUE), ]
-  aggr
+  listgenerate <- list("emotlist" = emotlist, "aggr" = aggr)
+  listgenerate
 }
+#aggr <- generate_emotions_weight_aggr("~/Downloads/features-basic6-trec-notext-p11.tsv")
 
 plot_emotions_weight <- function(filefeatures) {
-  aggr <- generate_emotions_weight(filefeatures)
+  listgenerate <- generate_emotions_weight_aggr(filefeatures)
+  aggr <- listgenerate$aggr
   ggplot(aggr, aes(x=reorder(Emotions, Weight), y=Weight, fill = Weight)) + 
     geom_bar(stat="identity") +
     scale_fill_gradient(low = "blue", high = "blue") + 
@@ -196,15 +201,36 @@ plot_emotions_weight <- function(filefeatures) {
     theme(legend.position="none") +
     coord_flip() 
 }
-#plot_emotions_weight("~/Downloads/features-basic6-trec-notext-p1.tsv.gz")
+#plot_emotions_weight("~/Downloads/features-basic6-trec-notext-p11.tsv")
 
 plot_emotion_distribution_weight <- function(filefeatures, emot) {
-  features <- read_features_file(filefeatures)
-  aggr <- generate_emotions_weight(features)
-  aggr <- aggr[aggr$Label == emot, ]
-  ggplot(aggr, aes(x=aggr$Weight)) + geom_histogram(bins=5)
+  listgenerate <- generate_emotions_weight(filefeatures)
+  emotlist <- listgenerate$emotlist 
+  emotlist <- emotlist[emotlist$Label == emot, ]
+  ggplot(emotlist, aes(x=emotlist$Weight)) + geom_histogram(bins=5)
 }
-#plot_emotion_distribution_weight("~/Downloads/features-basic6-trec-notext-p1.tsv.gz", "self-pride")
+#plot_emotion_distribution_weight("~/Downloads/features-basic6-trec-notext-p11.tsv", "self-pride")
+
+plot_emotion_distribution_weight_topn <- function(filefeatures, n) {
+  listgenerate <- generate_emotions_weight_aggr(filefeatures)
+  aggr <- listgenerate$aggr
+  aggr <- head(aggr[order(aggr$Weight, decreasing = TRUE), ], n)
+  emotlist <- listgenerate$emotlist
+  lg <- list()
+  for (i in 1:n) 
+  local({
+    i <- i
+    emot <- aggr[i,]$Emotions
+    agwe <- emotlist[emotlist$Label == emot,] 
+    p1 <- ggplot(data = agwe, aes(x=agwe$Weight)) +
+      geom_histogram(bins=5,fill="blue") + 
+      ylab("weight") + 
+      xlab(emot)
+    lg[[i]] <<- p1
+  })
+  grid.arrange(grobs = lg, ncol = 2)
+}
+#plot_emotion_distribution_weight_topn("~/Downloads/features-basic6-trec-notext-p11.tsv", 6)
 
 getSeason <- function(DATES) {
   WS <- as.Date("2012-12-15", format = "%Y-%m-%d") # Winter Solstice
@@ -331,14 +357,29 @@ rerank_process <- function(filerun, filematrix, fileout) {
 #reduce_rank_file("~/Downloads/feup-run2.res", "~/Downloads/reduced.res", 100)
 # ========== Rerank methods ==========
 
-plot_authors_distrib <- function(filetrecextra) {
-  features <- read_features_file(filetrecextra)
-  features <- features[!(is.na(features$author) | features$author=="null" | features$author==""), ]
-  features$author <- gsub( ", ", "|", as.character(features$author) )
-  features$author <- gsub( " and ", "|", as.character(features$author) )
-  features$author <- gsub( "; ", "|", as.character(features$author) )
-  features$author <- gsub( "— ", "", as.character(features$author) )
-  authors <- as.data.frame(table(unlist(str_split(features$author, "\\|")), dnn = list("author")), responseName = "freq")
+get_ids_topn_authors <- function(filefeaturesextra, n) {
+  featuresextra <- read_features_file(filefeaturesextra)
+  featuresextra <- featuresextra[!(is.na(featuresextra$author) | featuresextra$author=="null" | featuresextra$author==""), ]
+  featuresextra$author <- gsub( ", ", "|", as.character(featuresextra$author) )
+  featuresextra$author <- gsub( " and ", "|", as.character(featuresextra$author) )
+  featuresextra$author <- gsub( "; ", "|", as.character(featuresextra$author) )
+  featuresextra$author <- gsub( "— ", "", as.character(featuresextra$author) )
+  authors <- head(authors[order(authors$freq, decreasing = TRUE), ], n)
+  
+}
+
+get_authors_extra_features <- function(filefeaturesextra) {
+  featuresextra <- read_features_file(filefeaturesextra)
+  featuresextra <- featuresextra[!(is.na(featuresextra$author) | featuresextra$author=="null" | featuresextra$author==""), ]
+  featuresextra$author <- gsub( ", ", "|", as.character(featuresextra$author) )
+  featuresextra$author <- gsub( " and ", "|", as.character(featuresextra$author) )
+  featuresextra$author <- gsub( "; ", "|", as.character(featuresextra$author) )
+  featuresextra$author <- gsub( "— ", "", as.character(featuresextra$author) )
+  authors <- as.data.frame(table(unlist(str_split(featuresextra$author, "\\|")), dnn = list("author")), responseName = "freq")
+  authors
+}
+plot_authors_distrib <- function(filefeaturesextra) {
+  authors <- get_authors_extra_features(filefeaturesextra)
   authors <- head(authors[order(authors$freq, decreasing = TRUE), ], 20)
   ggplot(authors, aes(x=reorder(author, freq), y=freq, fill = freq)) + 
     geom_bar(stat="identity") + 
@@ -350,10 +391,14 @@ plot_authors_distrib <- function(filetrecextra) {
 }
 #plot_authors_distrib('~/Downloads/trec-extra-a.tsv')
 
-plot_topics_distrib <- function(filetrecextra) {
-  features <- read.csv(file=filetrecextra, header=TRUE, sep="\t")
-  features <- features[!(is.na(features$article_url) | features$article_url=="null" | features$article_url==""), ]
-  topics <- as.data.frame(table(unlist(str_split(features$article_url, "\\|")), dnn = list("topic")), responseName = "freq")
+get_topics_extra_features <- function(filefeaturesextra) {
+  featuresextra <- read.csv(file=filefeaturesextra, header=TRUE, sep="\t")
+  featuresextra <- featuresextra[!(is.na(featuresextra$article_url) | featuresextra$article_url=="null" | featuresextra$article_url==""), ]
+  topics <- as.data.frame(table(unlist(str_split(featuresextra$article_url, "\\|")), dnn = list("topic")), responseName = "freq")
+  topics
+}  
+plot_topics_distrib <- function(filefeaturesextra) {
+  topics <- get_topics_extra_features(filefeaturesextra)
   topics <- head(topics[order(topics$freq, decreasing = TRUE), ], 20)
   ggplot(topics, aes(x=reorder(topic, freq), y=freq, fill = freq)) + 
     geom_bar(stat="identity") + 
