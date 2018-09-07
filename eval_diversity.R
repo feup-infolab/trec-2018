@@ -2,7 +2,8 @@ if (!require("pacman")) install.packages("pacman")
 
 pacman::p_load(
   proxy,
-  logging
+  logging,
+  memoise
 )
 
 basicConfig()
@@ -56,6 +57,7 @@ dp_runs <- list(
       "EmotionCategories"
     ),
     binary_weights=TRUE,
+    limit=Inf,
     base_run_id="run1"
   ),
   
@@ -135,10 +137,10 @@ dp_runs <- list(
 # Calculate weighted diversities
 #
 
-cache_dist <- list()
-
-weighted_diversity <- function(base_run_id, data, features, binary_weights, limit=Inf) {
-  cache_key <- ""
+get_dp_dist <- function(base_run_id, features, binary_weights) {
+  loginfo(
+    "Computing cosine distance matrix for base_run_id = %s, features = %s, binary_weights = %s",
+    base_run_id, paste(features, collapse = ", "), as.character(binary_weights))
 
   if (binary_weights) {
     if (base_run_id == "run1") {
@@ -146,36 +148,42 @@ weighted_diversity <- function(base_run_id, data, features, binary_weights, limi
     } else {
       dp <- dp_r2_bin
     }
-    cache_key <- paste(cache_key, base_run_id, "bin", sep = "_")
   } else {
     dp <- dp_r1_real
-    cache_key <- paste(cache_key, base_run_id, "real", sep = "_")
   }
   
-  cache_key <- paste(cache_key, paste(sort(features), collapse = "_"), sep = "_")
-  
-  if (is.null(cache_dist[[cache_key]])) {
-    loginfo("Computing cosine distance matrix for %s", cache_key)
-    cache_dist[[cache_key]] <- as.matrix(1 - round(proxy::simil(dp, method = "cosine"), 10))
-  }
-  
+  dp <- dp[, grep(sprintf("^(%s)", paste(features, collapse = "|")), colnames(dp))]
+
+  as.matrix(1 - round(proxy::simil(dp, method = "cosine"), 10))
+}
+get_dp_dist <- memoise(get_dp_dist, cache = cache_filesystem("output/dp_dist_cache"))
+
+weighted_diversity <- function(base_run_id, data, features, binary_weights, limit=Inf) {
+  dp_dist <- get_dp_dist(base_run_id, sort(features), binary_weights)
+
   per_topic <- split(data, data$topic)
   
   diversity_per_topic <- sapply(per_topic, function(res) {
     res <- head(res, limit)
     N <- nrow(res)
     weights <- seq(1, 0, -1/(N-1))[-N]
-    sum(sapply(1:nrow(res), function(i) {
+    weights <- weights / norm(as.matrix(weights))
+
+    sum(sapply(1:(N-1), function(i) {
       doc_id <- as.character(res[i, "doc_id"])
-      weights[i] * median(cache_dist[[cache_key]][
-        doc_id, -which(colnames(cache_dist[[cache_key]]) == doc_id)])
+      if (doc_id %in% colnames(dp_dist)) {
+        weights[i] * median(dp_dist[doc_id, -which(colnames(dp_dist) == doc_id)])
+      } else {
+        logwarn("No document profile found for document %s, skipping", doc_id)
+        0
+      }
     }))
   })
-  
+
   median(diversity_per_topic)
 }
 
-dp_runs_diversity <- lapply(names(dp_runs), function(run_id) {
+dp_runs_diversity <- setNames(lapply(names(dp_runs), function(run_id) {
   loginfo("Computing weighted diversity for %s", run_id)
   do.call(weighted_diversity, dp_runs[[run_id]])
-})
+}), names(dp_runs))
