@@ -25,6 +25,7 @@ dp_r2_bin <- read.table(
   "data/run2-document_profile-binary_weights-with_pruning-without_keywords-top_100_results.tsv.gz",
   header = T,
   row.names = 1)
+dp_r2_bin <- dp_r2_bin[, -which(colnames(dp_r2_bin) == "Language")]
 
 #
 # Load runs and their document profile configuration
@@ -160,20 +161,22 @@ weighted_diversity <- function(base_run_id, data, features, binary_weights, limi
   
   per_topic <- split(data, data$topic)
   
-  diversity_per_topic <- lapply(per_topic, function(res) {
+  diversity_per_topic <- sapply(per_topic, function(res) {
     res <- head(res, limit)
     N <- nrow(res)
     weights <- seq(1, 0, -1/(N-1))[-N]
-    pairs <- combn(res$doc_id, 2)
-    sum(apply(1:nrow(res), 1, function(i) {
-      weights[rank] * do.call(median, as.list(cache_dist[[cache_key]][
-        res[i, "doc_id"], -which(colnames(cache_dist[[cache_key]]) == res[i, "doc_id"])]))
+    sum(sapply(1:nrow(res), function(i) {
+      doc_id <- as.character(res[i, "doc_id"])
+      print(doc_id)
+      weights[i] * median(cache_dist[[cache_key]][
+        doc_id, -which(colnames(cache_dist[[cache_key]]) == doc_id)])
     }))
   })
   
-  do.call(median, diversity_per_topic)
+  median(diversity_per_topic)
 }
 
-#N <- 10
-# $w_r = 1 - \frac{r - 1}{N - 1}$
-#seq(1, 0, -1/(N-1))[-N]
+dp_runs_diversity <- lapply(names(dp_runs), function(run_id) {
+  loginfo("Computing weighted diversity for %s", run_id)
+  do.call(weighted_diversity, dp_runs[[run_id]])
+})
