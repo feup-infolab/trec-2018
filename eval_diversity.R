@@ -167,7 +167,6 @@ weighted_diversity <- function(base_run_id, data, features, binary_weights, limi
     weights <- seq(1, 0, -1/(N-1))[-N]
     sum(sapply(1:nrow(res), function(i) {
       doc_id <- as.character(res[i, "doc_id"])
-      print(doc_id)
       weights[i] * median(cache_dist[[cache_key]][
         doc_id, -which(colnames(cache_dist[[cache_key]]) == doc_id)])
     }))
