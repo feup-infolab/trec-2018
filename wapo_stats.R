@@ -69,7 +69,7 @@ get_document_length <- function(filepath) {
   res
 }
 #loginfo("Getting document length and first-three-paragraphs length")
-#doc_length <- get_document_length("~/Downloads/WashingtonPost.v2/data/TREC_Washington_Post_collection.v2.jl")
+#doc_length <- get_document_length("data/TREC_Washington_Post_collection.v2.jl")
 
 generate_csv <- function(doc_length, doc_length_path) {
   #dir.create("output/", showWarnings = F)
@@ -84,7 +84,7 @@ read_csv <- function(doc_length_path) {
   res
 }
 #loginfo("Getting document length from file")
-#doc_length <- read_csv(doc_length_path = "~/gitprojects/wapo-analytics/output/wapo-doc_length-all.csv.gz")
+#doc_length <- read_csv(doc_length_path = "output/wapo-doc_length-all.csv.gz")
 
 plot_data <- function(doc_length) {
   doc_length <- doc_length[order(doc_length$doc_len), ]
@@ -106,8 +106,7 @@ read_features_file <- function(features_file_path) {
   res
 }
 #loginfo("Getting features from file")
-#features <- read_features_file("~/Descargas/feat-small.tsv")
-#features <- read_features_file("~/Downloads/features-basic6-trec-notext-p11.tsv")
+#features <- read_features_file("data/features-basic6-trec-notext-small.tsv")
 
 plot_sentiment <- function(filefeatures) {
   features <- read_features_file(filefeatures)
@@ -120,7 +119,7 @@ plot_sentiment <- function(filefeatures) {
     theme(legend.position="none")
 }
 #loginfo("Draw graph sentiment")
-#plot_sentiment("~/Downloads/features-basic6-trec-notext-p11.tsv")
+#plot_sentiment("data/features-basic6-trec-notext-small.tsv")
 
 plot_readability <- function(filefeatures) {
   features <- read_features_file(filefeatures)
@@ -135,7 +134,7 @@ plot_readability <- function(filefeatures) {
     ylab("Documents") +
     theme(legend.position="none",axis.text.x = element_text(angle = 45, hjust = 1))#axis.text=element_text(size=4))
 }
-#plot_readability("~/Downloads/features-basic6-trec-notext-p11.tsv")
+#plot_readability("data/features-basic6-trec-notext-small.tsv")
 
 plot_named_entities <- function(filefeatures) {
   features <- read_features_file(filefeatures)
@@ -150,7 +149,7 @@ plot_named_entities <- function(filefeatures) {
   theme(legend.position="none") +
   coord_flip() 
 }
-#plot_named_entities("~/Downloads/features-basic6-trec-notext-p11.tsv")
+#plot_named_entities("data/features-basic6-trec-notext-small.tsv")
 
 plot_emotions_ocurrences <- function(filefeatures) {
   features <- read_features_file(filefeatures)
@@ -167,7 +166,7 @@ plot_emotions_ocurrences <- function(filefeatures) {
     theme(legend.position="none") +
     coord_flip() 
 }
-#plot_emotions_ocurrences("~/Downloads/features-basic6-trec-notext-p11.tsv")
+#plot_emotions_ocurrences("data/features-basic6-trec-notext-small.tsv")
 
 generate_emotions_weight <- function(filefeatures) {
   features <- read_features_file(filefeatures)
@@ -191,7 +190,7 @@ generate_emotions_weight_aggr <- function(filefeatures) {
   listgenerate <- list("emotlist" = emotlist, "aggr" = aggr)
   listgenerate
 }
-#aggr <- generate_emotions_weight_aggr("~/Downloads/features-basic6-trec-notext-p11.tsv")
+#aggr <- generate_emotions_weight_aggr("data/features-basic6-trec-notext-small.tsv")
 
 plot_emotions_weight <- function(filefeatures) {
   listgenerate <- generate_emotions_weight_aggr(filefeatures)
@@ -204,7 +203,7 @@ plot_emotions_weight <- function(filefeatures) {
     theme(legend.position="none") +
     coord_flip() 
 }
-#plot_emotions_weight("~/Downloads/features-basic6-trec-notext-p11.tsv")
+#plot_emotions_weight("data/features-basic6-trec-notext-small.tsv")
 
 plot_emotion_distribution_weight <- function(filefeatures, emot) {
   listgenerate <- generate_emotions_weight(filefeatures)
@@ -212,7 +211,7 @@ plot_emotion_distribution_weight <- function(filefeatures, emot) {
   emotlist <- emotlist[emotlist$Label == emot, ]
   ggplot(emotlist, aes(x=emotlist$Weight)) + geom_histogram(bins=5)
 }
-#plot_emotion_distribution_weight("~/Downloads/features-basic6-trec-notext-p11.tsv", "self-pride")
+#plot_emotion_distribution_weight("data/features-basic6-trec-notext-small.tsv", "self-pride")
 
 plot_emotion_distribution_weight_topn <- function(filefeatures, n) {
   listgenerate <- generate_emotions_weight_aggr(filefeatures)
@@ -233,7 +232,7 @@ plot_emotion_distribution_weight_topn <- function(filefeatures, n) {
   })
   grid.arrange(grobs = lg, ncol = 2)
 }
-#plot_emotion_distribution_weight_topn("~/Downloads/features-basic6-trec-notext-p11.tsv", 6)
+#plot_emotion_distribution_weight_topn("data/features-basic6-trec-notext-small.tsv", 6)
 
 getSeason <- function(DATES) {
   WS <- as.Date("2012-12-15", format = "%Y-%m-%d") # Winter Solstice
@@ -250,7 +249,7 @@ getSeason <- function(DATES) {
 }
 
 time_published_histogram <- function() {
-  extra <- read.csv(file="~/Downloads/trec-extra.tsv", header=TRUE, sep="\t")
+  extra <- read.csv(file="data/trec-extra.tsv", header=TRUE, sep="\t")
   extra$published_date_real <- as.Date(as.POSIXct(extra$published_date/1000, origin="1969-12-31"))
   ggplot(extra, aes(x=published_date_real)) + geom_histogram(binwidth=30, colour="white") +
     scale_x_date(labels = date_format("%Y-%b"),
@@ -261,27 +260,6 @@ time_published_histogram <- function() {
     #theme(legend.position="none",axis.text.x = element_text(angle = 0, hjust = 1))
 }
 time_published_histogram()
-
-temp <- function() {
-  #time <- read.csv(file="~/Downloads/features-nent_time-notext.tsv", header=TRUE, sep="\t")
-  #extra <- read.csv(file="~/Downloads/trec-extra-date.tsv", header=TRUE, sep="\t")
-  #total <- merge(time,extra,by="id")
-  #write.table(total,file="~/Downloads/feat-date-nent_time.tsv",sep="\t",quote = F,row.names = F)
-  total <- read.csv(file="~/Downloads/feat-date-nent_time.tsv", header=TRUE, sep="\t")
-  total$date <- as.Date(as.POSIXct(total$published_date/1000, origin="1969-12-31"))
-  total$year <- year(as.POSIXct(total$published_date/1000, origin="1969-12-31"))
-  total$month <- month(as.POSIXct(total$published_date/1000, origin="1969-12-31"))
-  total$day <- day(as.POSIXct(total$published_date/1000, origin="1969-12-31"))
-  total$month_abb <- month.abb[month(as.POSIXct(1325376562000/1000, origin="1969-12-31"))]
-  total$weekday <- weekdays(as.Date(as.POSIXct(total$published_date/1000, origin="1969-12-31")))
-  total$season <- getSeason(as.Date(as.POSIXct(total$published_date/1000, origin="1969-12-31")))
-  total$week <- lubridate::isoweek(ymd(as.Date(as.POSIXct(total$published_date/1000, origin="1969-12-31"))))
-  write.table(total,file="~/Downloads/trec-dates-all.tsv",sep="\t",quote = F,row.names = F)
-  total
-}
-#total <- temp()
-#head(total)
-#write.csv(total, "~/Downloads/feat-date-nent_time.tsv", row.names = F, sep="\t")
 
 # ========== Rerank methods ==========
 #LAMBDA <- 0.5
@@ -368,9 +346,9 @@ rerank_process <- function(filerun, filematrix, fileout) {
   #s_rerank <- s_rerank[, c("V1", "V2", "V3", "rank", "score", "V6")]
   write.table(s_rerank,file=fileout,sep=" ",quote = F, col.names = F, row.names = F)
 }
-#rerank_process("~/Downloads/feup-run1.res", "~/Downloads/run1-matrix-bin-discret.tsv", "~/Downloads/out.res")
+#rerank_process("data/feup-run1.res", "data/run1-matrix-bin-discret.tsv", "output/out.res")
 
-#reduce_rank_file("~/Downloads/feup-run2.res", "~/Downloads/reduced.res", 100)
+#reduce_rank_file("data/feup-run2.res", "output/reduced.res", 100)
 # ========== Rerank methods ==========
 
 get_ids_topn_authors <- function(filefeaturesextra, n) {
@@ -405,7 +383,7 @@ plot_authors_distrib <- function(filefeaturesextra) {
     theme(legend.position="none") +
     coord_flip() 
 }
-#plot_authors_distrib('~/Downloads/trec-extra-a.tsv')
+#plot_authors_distrib('data/trec-extra.tsv')
 
 get_topics_extra_features <- function(filefeaturesextra) {
   featuresextra <- read.csv(file=filefeaturesextra, header=TRUE, sep="\t")
@@ -424,4 +402,4 @@ plot_topics_distrib <- function(filefeaturesextra) {
     theme(legend.position="none") +
     coord_flip() 
 }
-#plot_topics_distrib('~/Downloads/trec-extra-a.tsv')
+#plot_topics_distrib('data/trec-extra.tsv')
