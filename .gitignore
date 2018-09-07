@@ -1,5 +1,6 @@
-# wapo-analytics
+# trec-2018
 output/
+data/
 
 # History files
 .Rhistory
