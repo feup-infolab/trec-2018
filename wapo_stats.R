@@ -10,10 +10,13 @@ pacman::p_load(
   "lubridate",
   "proxy",
   "Rmisc",
-  "gridExtra"
+  "gridExtra",
+  "scales"
 )
 
 basicConfig()
+
+Sys.setlocale("LC_TIME", "C")
 
 BATCH_SIZE <- 10000
 BIN_WIDTH <- 4000
@@ -246,20 +249,33 @@ getSeason <- function(DATES) {
                   ifelse (d >= SS & d < FE, "Summer", "Fall")))
 }
 
+time_published_histogram <- function() {
+  extra <- read.csv(file="~/Downloads/trec-extra.tsv", header=TRUE, sep="\t")
+  extra$published_date_real <- as.Date(as.POSIXct(extra$published_date/1000, origin="1969-12-31"))
+  ggplot(extra, aes(x=published_date_real)) + geom_histogram(binwidth=30, colour="white") +
+    scale_x_date(labels = date_format("%Y-%b"),
+                 #breaks = seq(as.Date("2011-10-01")-5, as.Date("2015-04-01")+5, 30),
+                 limits = c(as.Date("2011-12-01"), as.Date("2015-04-01"))) +
+    ylab("Frequency") + xlab("Year and Month") +
+    theme(legend.position="none")
+    #theme(legend.position="none",axis.text.x = element_text(angle = 0, hjust = 1))
+}
+time_published_histogram()
+
 temp <- function() {
   #time <- read.csv(file="~/Downloads/features-nent_time-notext.tsv", header=TRUE, sep="\t")
   #extra <- read.csv(file="~/Downloads/trec-extra-date.tsv", header=TRUE, sep="\t")
   #total <- merge(time,extra,by="id")
   #write.table(total,file="~/Downloads/feat-date-nent_time.tsv",sep="\t",quote = F,row.names = F)
   total <- read.csv(file="~/Downloads/feat-date-nent_time.tsv", header=TRUE, sep="\t")
-  total$date <- as.Date(as.POSIXct(total$published_date/1000, origin="1970-01-01"))
-  total$year <- year(as.POSIXct(total$published_date/1000, origin="1970-01-01"))
-  total$month <- month(as.POSIXct(total$published_date/1000, origin="1970-01-01"))
-  total$day <- day(as.POSIXct(total$published_date/1000, origin="1970-01-01"))
-  total$month_abb <- month.abb[month(as.POSIXct(1325376562000/1000, origin="1970-01-01"))]
-  total$weekday <- weekdays(as.Date(as.POSIXct(total$published_date/1000, origin="1970-01-01")))
-  total$season <- getSeason(as.Date(as.POSIXct(total$published_date/1000, origin="1970-01-01")))
-  total$week <- lubridate::isoweek(ymd(as.Date(as.POSIXct(total$published_date/1000, origin="1970-01-01"))))
+  total$date <- as.Date(as.POSIXct(total$published_date/1000, origin="1969-12-31"))
+  total$year <- year(as.POSIXct(total$published_date/1000, origin="1969-12-31"))
+  total$month <- month(as.POSIXct(total$published_date/1000, origin="1969-12-31"))
+  total$day <- day(as.POSIXct(total$published_date/1000, origin="1969-12-31"))
+  total$month_abb <- month.abb[month(as.POSIXct(1325376562000/1000, origin="1969-12-31"))]
+  total$weekday <- weekdays(as.Date(as.POSIXct(total$published_date/1000, origin="1969-12-31")))
+  total$season <- getSeason(as.Date(as.POSIXct(total$published_date/1000, origin="1969-12-31")))
+  total$week <- lubridate::isoweek(ymd(as.Date(as.POSIXct(total$published_date/1000, origin="1969-12-31"))))
   write.table(total,file="~/Downloads/trec-dates-all.tsv",sep="\t",quote = F,row.names = F)
   total
 }
