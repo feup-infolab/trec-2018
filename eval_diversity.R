@@ -158,6 +158,8 @@ get_dp_dist <- function(base_run_id, features, binary_weights) {
 }
 get_dp_dist <- memoise(get_dp_dist, cache = cache_filesystem("output/dp_dist_cache"))
 
+weighted_geometric_mean <- function(x, w) exp(sum(w * log(x)) / sum(w))
+
 weighted_diversity <- function(base_run_id, data, features, binary_weights, limit=Inf) {
   dp_dist <- get_dp_dist(base_run_id, sort(features), binary_weights)
 
@@ -166,13 +168,15 @@ weighted_diversity <- function(base_run_id, data, features, binary_weights, limi
   diversity_per_topic <- sapply(per_topic, function(res) {
     res <- head(res, limit)
     N <- nrow(res)
-    weights <- seq(1, 0, -1/(N-1))[-N]
+    #weights <- seq(1, 0, -1/(N-1))[-N]
+    weights <- 1 / seq(1, N)
     weights <- weights / norm(as.matrix(weights))
 
     sum(sapply(1:(N-1), function(i) {
       doc_id <- as.character(res[i, "doc_id"])
       if (doc_id %in% colnames(dp_dist)) {
         weights[i] * mean(dp_dist[doc_id, -which(colnames(dp_dist) == doc_id)])
+        #weighted_geometric_mean(dp_dist[doc_id, -which(colnames(dp_dist) == doc_id)], weights)
       } else {
         logwarn("No document profile found for document %s, skipping", doc_id)
         0
@@ -202,7 +206,7 @@ dp_runs_diversity_base_compare <- lapply(names(dp_runs), function(run_id) {
   c(
     base=base_diversity$mean,
     rerank=dp_runs_diversity[[run_id]]$mean,
-    t.test=t.test(base_diversity$vector, dp_runs_diversity[[run_id]]$vector)$p.value)
+    wilcox=wilcox.test(base_diversity$vector, dp_runs_diversity[[run_id]]$vector)$p.value)
 })
 dp_runs_diversity_base_compare <- do.call(rbind, setNames(dp_runs_diversity_base_compare, names(dp_runs)))
 dp_runs_diversity_base_compare
