@@ -63,7 +63,7 @@ dp_runs <- list(
   
   run4=list(
     data=setNames(
-      read.table("data/feup-run3.res.gz", header = F, sep = " "),
+      read.table("data/feup-run4.res.gz", header = F, sep = " "),
       c("topic", "q0", "doc_id", "rank", "score", "run_id")),
     features=c(
       "SentimentAnalysis",
@@ -76,7 +76,7 @@ dp_runs <- list(
   
   run5=list(
     data=setNames(
-      read.table("data/feup-run3.res.gz", header = F, sep = " "),
+      read.table("data/feup-run5.res.gz", header = F, sep = " "),
       c("topic", "q0", "doc_id", "rank", "score", "run_id")),
     features=c(
       "Keywords",
@@ -92,7 +92,7 @@ dp_runs <- list(
   
   run6=list(
     data=setNames(
-      read.table("data/feup-run3.res.gz", header = F, sep = " "),
+      read.table("data/feup-run6.res.gz", header = F, sep = " "),
       c("topic", "q0", "doc_id", "rank", "score", "run_id")),
     features=c(
       "SentimentAnalysis",
@@ -106,7 +106,7 @@ dp_runs <- list(
   
   run7=list(
     data=setNames(
-      read.table("data/feup-run3.res.gz", header = F, sep = " "),
+      read.table("data/feup-run7.res.gz", header = F, sep = " "),
       c("topic", "q0", "doc_id", "rank", "score", "run_id")),
     features=c(
       "SentimentAnalysis",
@@ -119,7 +119,7 @@ dp_runs <- list(
   
   run8=list(
     data=setNames(
-      read.table("data/feup-run3.res.gz", header = F, sep = " "),
+      read.table("data/feup-run8.res.gz", header = F, sep = " "),
       c("topic", "q0", "doc_id", "rank", "score", "run_id")),
     features=c(
       "NamedEntities",
@@ -172,7 +172,7 @@ weighted_diversity <- function(base_run_id, data, features, binary_weights, limi
     sum(sapply(1:(N-1), function(i) {
       doc_id <- as.character(res[i, "doc_id"])
       if (doc_id %in% colnames(dp_dist)) {
-        weights[i] * median(dp_dist[doc_id, -which(colnames(dp_dist) == doc_id)])
+        weights[i] * mean(dp_dist[doc_id, -which(colnames(dp_dist) == doc_id)])
       } else {
         logwarn("No document profile found for document %s, skipping", doc_id)
         0
@@ -180,10 +180,29 @@ weighted_diversity <- function(base_run_id, data, features, binary_weights, limi
     }))
   })
 
-  median(diversity_per_topic)
+  list(vector=diversity_per_topic, mean=mean(diversity_per_topic))
 }
 
-dp_runs_diversity <- setNames(lapply(names(dp_runs), function(run_id) {
+dp_runs_diversity <- lapply(names(dp_runs), function(run_id) {
   loginfo("Computing weighted diversity for %s", run_id)
   do.call(weighted_diversity, dp_runs[[run_id]])
-}), names(dp_runs))
+})
+names(dp_runs_diversity) <- names(dp_runs)
+
+dp_runs_diversity_base_compare <- lapply(names(dp_runs), function(run_id) {
+  base_run_id <- dp_runs[[run_id]]$base_run_id
+
+  base_diversity <- weighted_diversity(
+    base_run_id,
+    base_runs[[base_run_id]],
+    features = sort(dp_runs[[run_id]]$features),
+    binary_weights = dp_runs[[run_id]]$binary_weights,
+    limit = dp_runs[[run_id]]$limit)
+
+  c(
+    base=base_diversity$mean,
+    rerank=dp_runs_diversity[[run_id]]$mean,
+    t.test=t.test(base_diversity$vector, dp_runs_diversity[[run_id]]$vector)$p.value)
+})
+dp_runs_diversity_base_compare <- do.call(rbind, setNames(dp_runs_diversity_base_compare, names(dp_runs)))
+dp_runs_diversity_base_compare
