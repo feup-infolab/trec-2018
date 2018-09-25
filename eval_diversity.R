@@ -175,8 +175,8 @@ weighted_diversity <- function(base_run_id, data, features, binary_weights, limi
     sum(sapply(1:(N-1), function(i) {
       doc_id <- as.character(res[i, "doc_id"])
       if (doc_id %in% colnames(dp_dist)) {
-        weights[i] * mean(dp_dist[doc_id, -which(colnames(dp_dist) == doc_id)])
-        #weighted_geometric_mean(dp_dist[doc_id, -which(colnames(dp_dist) == doc_id)], weights)
+        weights[i] * mean(dp_dist[doc_id, colnames(dp_dist) %in% res$doc_id & colnames(dp_dist) != doc_id])
+        #weighted_geometric_mean(..., weights)
       } else {
         logwarn("No document profile found for document %s, skipping", doc_id)
         0
