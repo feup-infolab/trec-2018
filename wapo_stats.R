@@ -11,7 +11,8 @@ pacman::p_load(
   "proxy",
   "Rmisc",
   "gridExtra",
-  "scales"
+  "scales",
+  "tidyr"
 )
 
 basicConfig()
@@ -46,16 +47,18 @@ get_document_length <- function(filepath) {
       })
 
       pars <- pars[!sapply(pars, is.null)]
-
+      
       doc_id = json$id
       doc_len <- nchar(do.call(paste, pars))
       par_len <- nchar(do.call(paste, head(pars, 3)))
+      n_words <- sapply(strsplit(do.call(paste, pars), " "), length)
+      #n_words <- lengths(gregexpr("[A-z]\\W+", do.call(paste, pars))) + 1L 
 
       if (length(doc_id) < 1 || length(doc_len) < 1 || length(par_len) < 1) {
         return(data.frame(doc_id=character(0), doc_len=character(0), par_len=character(0)))
       }
 
-      data.frame(doc_id=json$id, doc_len=doc_len, par_len=par_len)
+      data.frame(doc_id=json$id, doc_len=doc_len, par_len=par_len, n_words=n_words)
     })
 
     res <- rbind.fill(c(list(res), doc_lens))
@@ -69,7 +72,13 @@ get_document_length <- function(filepath) {
   res
 }
 #loginfo("Getting document length and first-three-paragraphs length")
-#doc_length <- get_document_length("data/TREC_Washington_Post_collection.v2.jl")
+#doc_length <- get_document_length("data/coll-small.jl")
+
+plot_nwords_distribution <- function(filepath) {
+  doc_length <- get_document_length(filepath)
+  ggplot(doc_length, aes(x=doc_length$n_words)) + geom_histogram(bins=20,boundary=-0.5) + xlab("Words") + ylab("Documents")
+}
+#plot_nwords_distribution("data/coll-small.jl")
 
 generate_csv <- function(doc_length, doc_length_path) {
   #dir.create("output/", showWarnings = F)
@@ -248,8 +257,8 @@ getSeason <- function(DATES) {
                   ifelse (d >= SS & d < FE, "Summer", "Fall")))
 }
 
-time_published_histogram <- function() {
-  extra <- read.csv(file="data/trec-extra.tsv", header=TRUE, sep="\t")
+time_published_histogram <- function(filetrecextra) {
+  extra <- read.csv(file=filetrecextra, header=TRUE, sep="\t")
   extra$published_date_real <- as.Date(as.POSIXct(extra$published_date/1000, origin="1969-12-31"))
   ggplot(extra, aes(x=published_date_real)) + geom_histogram(binwidth=30, colour="white") +
     scale_x_date(labels = date_format("%Y-%b"),
@@ -259,7 +268,7 @@ time_published_histogram <- function() {
     theme(legend.position="none")
     #theme(legend.position="none",axis.text.x = element_text(angle = 0, hjust = 1))
 }
-time_published_histogram()
+#time_published_histogram("data/trec-extra.tsv")
 
 # ========== Rerank methods ==========
 #LAMBDA <- 0.5
@@ -333,6 +342,7 @@ reduce_rank_file <- function(input_rank_file, output_rank_file, entries_per_topi
   }
   write.table(s_rerank,file=output_rank_file,sep=" ",quote = F,col.names = F, row.names = F)
 }
+#reduce_rank_file("data/feup-run2.res", "output/reduced.res", 100)
 
 # Rerank process
 rerank_process <- function(filerun, filematrix, fileout) {
@@ -348,7 +358,6 @@ rerank_process <- function(filerun, filematrix, fileout) {
 }
 #rerank_process("data/feup-run1.res", "data/run1-matrix-bin-discret.tsv", "output/out.res")
 
-#reduce_rank_file("data/feup-run2.res", "output/reduced.res", 100)
 # ========== Rerank methods ==========
 
 get_ids_topn_authors <- function(filefeaturesextra, n) {
@@ -359,7 +368,6 @@ get_ids_topn_authors <- function(filefeaturesextra, n) {
   featuresextra$author <- gsub( "; ", "|", as.character(featuresextra$author) )
   featuresextra$author <- gsub( "— ", "", as.character(featuresextra$author) )
   authors <- head(authors[order(authors$freq, decreasing = TRUE), ], n)
-  
 }
 
 get_authors_extra_features <- function(filefeaturesextra) {
@@ -369,12 +377,39 @@ get_authors_extra_features <- function(filefeaturesextra) {
   featuresextra$author <- gsub( " and ", "|", as.character(featuresextra$author) )
   featuresextra$author <- gsub( "; ", "|", as.character(featuresextra$author) )
   featuresextra$author <- gsub( "— ", "", as.character(featuresextra$author) )
+  featuresextra$author <- gsub( "’", "'", as.character(featuresextra$author) )
   authors <- as.data.frame(table(unlist(str_split(featuresextra$author, "\\|")), dnn = list("author")), responseName = "freq")
-  authors
+  df_separate <- featuresextra[, c("author", "type")]
+  #separate_rows don't works, alternative:
+    s <- strsplit(df_separate$author, split = "\\|")
+    df_separate <- data.frame(type = rep(df_separate$type, sapply(s, length)), author = unlist(s))
+  #df_separate %>% separate_rows(author, sep=",")
+  freq_author <- factor(df_separate$type)
+  listgenerate <- list("authors" = authors, 
+                       "freq_author" = freq_author, 
+                       "df_separate" = df_separate, 
+                       "featuresextra" = featuresextra)
+  listgenerate
 }
+#listgenerate <- get_authors_extra_features('data/trec-extra-small.tsv')
+
 plot_authors_distrib <- function(filefeaturesextra) {
   authors <- get_authors_extra_features(filefeaturesextra)
-  authors <- head(authors[order(authors$freq, decreasing = TRUE), ], 20)
+  authors <- listgenerate$authors
+  authors <- head(authors[order(authors$freq, decreasing = TRUE), ], 10)
+  ggplot(authors, aes(x=reorder(author, freq), y=freq, fill = freq)) + 
+    geom_bar(stat="identity") + 
+    scale_fill_gradient(low = "blue", high = "blue") + 
+    xlab("Authors") +
+    ylab("Documents") +
+    theme(legend.position="none") +
+    coord_flip() 
+}
+#plot_authors_distrib('data/trec-extra.tsv')
+
+plot_authors_distrib <- function(filefeaturesextra) {
+  authors <- get_authors_extra_features(filefeaturesextra)
+  authors <- head(authors[order(authors$freq, decreasing = TRUE), ], 10)
   ggplot(authors, aes(x=reorder(author, freq), y=freq, fill = freq)) + 
     geom_bar(stat="identity") + 
     scale_fill_gradient(low = "blue", high = "blue") + 
